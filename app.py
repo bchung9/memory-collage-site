@@ -60,6 +60,10 @@ class Memory(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     likes = db.relationship("Like", backref="memory", lazy=True, cascade="all, delete-orphan")
+    comments = db.relationship(
+        "Comment", backref="memory", lazy=True,
+        cascade="all, delete-orphan", order_by="Comment.created_at.asc()"
+    )
 
     def like_count(self):
         return len(self.likes)
@@ -73,6 +77,16 @@ class Like(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     memory_id = db.Column(db.Integer, db.ForeignKey("memory.id"), nullable=False)
     __table_args__ = (db.UniqueConstraint("user_id", "memory_id", name="unique_like"),)
+
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    memory_id = db.Column(db.Integer, db.ForeignKey("memory.id"), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    author = db.relationship("User")
 
 
 # ---------------------------------------------------------------------------
@@ -256,6 +270,33 @@ def like_memory(memory_id):
         liked = True
     db.session.commit()
     return jsonify({"liked": liked, "count": memory.like_count()})
+
+
+@app.route("/memory/<int:memory_id>/comment", methods=["POST"])
+@login_required
+def add_comment(memory_id):
+    memory = db.session.get(Memory, memory_id) or abort(404)
+    body = request.form.get("body", "").strip()
+    if body:
+        comment = Comment(user_id=current_user().id, memory_id=memory.id, body=body)
+        db.session.add(comment)
+        db.session.commit()
+    else:
+        flash("Comment can't be empty.", "error")
+    return redirect(url_for("memory_detail", memory_id=memory.id))
+
+
+@app.route("/comment/<int:comment_id>/delete", methods=["POST"])
+@login_required
+def delete_comment(comment_id):
+    comment = db.session.get(Comment, comment_id) or abort(404)
+    user = current_user()
+    if comment.user_id != user.id and comment.memory.user_id != user.id:
+        abort(403)
+    memory_id = comment.memory_id
+    db.session.delete(comment)
+    db.session.commit()
+    return redirect(url_for("memory_detail", memory_id=memory_id))
 
 
 @app.route("/u/<username>")
