@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}@{{ profile_user.username }} &middot; Memoria{% endblock %}
+{% block content %}
+
+<div class="page-head profile-head">
+  <div class="avatar-circle">{{ profile_user.username[0]|upper }}</div>
+  <div>
+    <h1>@{{ profile_user.username }}</h1>
+    <p class="muted">{{ memories|length }} memories kept &middot; joined {{ profile_user.created_at.strftime('%b %Y') }}</p>
+  </div>
+</div>
+
+{% if memories %}
+<div class="masonry">
+  {% for m in memories %}
+  <a class="card" href="{{ url_for('memory_detail', memory_id=m.id) }}" style="--rot: {{ (loop.index0 % 5 - 2) }}deg;">
+    <div class="card-media">
+      {% if m.media_type == 'video' %}
+        <video muted preload="metadata">
+          <source src="{{ url_for('static', filename='uploads/' ~ m.filename) }}">
+        </video>
+        <span class="badge-video">&#9654;</span>
+      {% else %}
+        <img src="{{ url_for('static', filename='uploads/' ~ m.filename) }}" alt="{{ m.caption }}" loading="lazy">
+      {% endif %}
+    </div>
+    <div class="card-strip">
+      {% if m.caption %}<p class="card-caption">{{ m.caption }}</p>{% endif %}
+      <div class="card-meta">
+        <span class="stamp">{{ m.memory_date if m.memory_date else m.created_at.strftime('%d %b %Y') }}</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <p>No memories kept yet.</p>
+  {% if current_user.id == profile_user.id %}
+  <a class="btn-pill" href="{{ url_for('upload') }}">Keep your first one</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

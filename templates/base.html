@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Memoria{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{{ url_for('feed') if current_user else url_for('login') }}">
+    <span class="brand-mark">&#9678;</span> Memoria
+  </a>
+
+  {% if current_user %}
+  <form class="search" action="{{ url_for('feed') }}" method="get">
+    <input type="text" name="q" placeholder="search captions&hellip;" value="{{ request.args.get('q', '') }}">
+  </form>
+  <nav class="nav-links">
+    <a href="{{ url_for('upload') }}" class="btn-pill">+ New memory</a>
+    <a href="{{ url_for('profile', username=current_user.username) }}">{{ current_user.username }}</a>
+    <a href="{{ url_for('logout') }}">Log out</a>
+  </nav>
+  {% else %}
+  <nav class="nav-links">
+    <a href="{{ url_for('login') }}">Log in</a>
+    <a href="{{ url_for('register') }}" class="btn-pill">Sign up</a>
+  </nav>
+  {% endif %}
+</header>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flashes">
+    {% for category, message in messages %}
+      <div class="flash flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

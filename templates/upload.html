@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}New memory &middot; Memoria{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card upload-card">
+    <h1>Keep a memory</h1>
+    <p class="muted">Add a photo or short video, and anything you remember about it.</p>
+    <form method="post" enctype="multipart/form-data">
+      <label class="file-drop" id="file-drop">
+        <input type="file" name="media" id="media-input" accept="image/*,video/mp4,video/webm,video/quicktime" required>
+        <span id="file-drop-label">Choose a photo or video&hellip;</span>
+      </label>
+      <div id="preview-wrap"></div>
+
+      <label>Caption
+        <textarea name="caption" rows="3" placeholder="What was happening here?"></textarea>
+      </label>
+      <div class="form-row">
+        <label>Where
+          <input type="text" name="location" placeholder="e.g. Lake Tahoe">
+        </label>
+        <label>When
+          <input type="text" name="memory_date" placeholder="e.g. Summer 2019">
+        </label>
+      </div>
+      <button type="submit" class="btn-solid">Save memory</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const input = document.getElementById('media-input');
+const label = document.getElementById('file-drop-label');
+const previewWrap = document.getElementById('preview-wrap');
+input.addEventListener('change', () => {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  label.textContent = file.name;
+  previewWrap.innerHTML = '';
+  const url = URL.createObjectURL(file);
+  if (file.type.startsWith('video/')) {
+    const v = document.createElement('video');
+    v.src = url; v.controls = true; v.className = 'preview-media';
+    previewWrap.appendChild(v);
+  } else {
+    const img = document.createElement('img');
+    img.src = url; img.className = 'preview-media';
+    previewWrap.appendChild(img);
+  }
+});
+</script>
+{% endblock %}

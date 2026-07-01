@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Sign up &middot; Memoria{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h1>Start keeping</h1>
+    <p class="muted">A place for the photos and clips you don't want to lose.</p>
+    <form method="post">
+      <label>Username
+        <input type="text" name="username" minlength="3" required autofocus>
+      </label>
+      <label>Password
+        <input type="password" name="password" minlength="6" required>
+      </label>
+      <label>Confirm password
+        <input type="password" name="confirm" minlength="6" required>
+      </label>
+      <button type="submit" class="btn-solid">Create account</button>
+    </form>
+    <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+  </div>
+</div>
+{% endblock %}
