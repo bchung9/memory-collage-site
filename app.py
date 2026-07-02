@@ -57,6 +57,7 @@ class Memory(db.Model):
     caption = db.Column(db.Text, default="")
     location = db.Column(db.String(120), default="")
     memory_date = db.Column(db.String(20), default="")  # free-text date the memory happened
+    is_public = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     likes = db.relationship("Like", backref="memory", lazy=True, cascade="all, delete-orphan")
@@ -190,9 +191,17 @@ def logout():
 @login_required
 def feed():
     q = request.args.get("q", "").strip()
-    query = Memory.query
+    user = current_user()
+    query = Memory.query.filter(
+        db.or_(Memory.is_public == True, Memory.user_id == user.id)
+    )
     if q:
-        query = query.filter(Memory.caption.ilike(f"%{q}%"))
+        query = query.join(User, Memory.user_id == User.id).filter(
+            db.or_(
+                Memory.caption.ilike(f"%{q}%"),
+                User.username.ilike(f"%{q}%"),
+            )
+        )
     memories = query.order_by(Memory.created_at.desc()).all()
     return render_template("feed.html", memories=memories, q=q)
 
@@ -205,6 +214,7 @@ def upload():
         caption = request.form.get("caption", "").strip()
         location = request.form.get("location", "").strip()
         memory_date = request.form.get("memory_date", "").strip()
+        is_public = request.form.get("visibility", "public") == "public"
 
         if not file or file.filename == "":
             flash("Please choose a photo or video.", "error")
@@ -225,6 +235,7 @@ def upload():
             caption=caption,
             location=location,
             memory_date=memory_date,
+            is_public=is_public,
         )
         db.session.add(memory)
         db.session.commit()
@@ -238,7 +249,21 @@ def upload():
 @login_required
 def memory_detail(memory_id):
     memory = db.session.get(Memory, memory_id) or abort(404)
+    if not memory.is_public and memory.user_id != current_user().id:
+        abort(404)
     return render_template("memory_detail.html", memory=memory)
+
+
+@app.route("/memory/<int:memory_id>/toggle-visibility", methods=["POST"])
+@login_required
+def toggle_visibility(memory_id):
+    memory = db.session.get(Memory, memory_id) or abort(404)
+    if memory.user_id != current_user().id:
+        abort(403)
+    memory.is_public = not memory.is_public
+    db.session.commit()
+    flash(f"Memory is now {'public' if memory.is_public else 'private'}.", "success")
+    return redirect(url_for("memory_detail", memory_id=memory.id))
 
 
 @app.route("/memory/<int:memory_id>/delete", methods=["POST"])
@@ -303,7 +328,10 @@ def delete_comment(comment_id):
 @login_required
 def profile(username):
     user = User.query.filter_by(username=username).first() or abort(404)
-    memories = Memory.query.filter_by(user_id=user.id).order_by(Memory.created_at.desc()).all()
+    query = Memory.query.filter_by(user_id=user.id)
+    if user.id != current_user().id:
+        query = query.filter_by(is_public=True)
+    memories = query.order_by(Memory.created_at.desc()).all()
     return render_template("profile.html", profile_user=user, memories=memories)
 
 
