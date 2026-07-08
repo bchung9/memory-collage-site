@@ -16,9 +16,10 @@
 
   {% if current_user %}
   <form class="search" action="{{ url_for('feed') }}" method="get">
-    <input type="text" name="q" placeholder="search captions&hellip;" value="{{ request.args.get('q', '') }}">
+    <input type="text" name="q" placeholder="search captions or @usernames&hellip;" value="{{ request.args.get('q', '') }}">
   </form>
   <nav class="nav-links">
+    <a href="{{ url_for('timeline') }}">Timeline</a>
     <a href="{{ url_for('upload') }}" class="btn-pill">+ New memory</a>
     <a href="{{ url_for('profile', username=current_user.username) }}">{{ current_user.username }}</a>
     <a href="{{ url_for('logout') }}">Log out</a>

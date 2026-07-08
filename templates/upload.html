@@ -23,6 +23,29 @@
           <input type="text" name="memory_date" placeholder="e.g. Summer 2019">
         </label>
       </div>
+
+      <label class="map-picker-label">
+        Drop a pin (optional)
+        <span class="muted map-picker-hint">Click the map to mark where this happened &mdash; shows up on your Timeline map.</span>
+      </label>
+      <div id="pin-map"></div>
+      <div id="pin-status" class="muted pin-status">No pin set.</div>
+      <button type="button" id="clear-pin" class="btn-text-accent" style="display:none;">Clear pin</button>
+      <input type="hidden" name="latitude" id="latitude">
+      <input type="hidden" name="longitude" id="longitude">
+
+      <fieldset class="visibility-toggle">
+        <legend>Who can see this?</legend>
+        <label class="radio-option">
+          <input type="radio" name="visibility" value="private" checked>
+          <span><strong>Private</strong> &mdash; only visible to you</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="visibility" value="public">
+          <span><strong>Public</strong> &mdash; shows up in everyone's feed</span>
+        </label>
+      </fieldset>
+
       <button type="submit" class="btn-solid">Save memory</button>
     </form>
   </div>
@@ -30,6 +53,8 @@
 {% endblock %}
 
 {% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const input = document.getElementById('media-input');
 const label = document.getElementById('file-drop-label');
@@ -48,6 +73,44 @@ input.addEventListener('change', () => {
     const img = document.createElement('img');
     img.src = url; img.className = 'preview-media';
     previewWrap.appendChild(img);
+  }
+});
+
+// Pin picker map
+const pinMap = L.map('pin-map').setView([20, 0], 2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(pinMap);
+
+let pinMarker = null;
+const latInput = document.getElementById('latitude');
+const lngInput = document.getElementById('longitude');
+const pinStatus = document.getElementById('pin-status');
+const clearBtn = document.getElementById('clear-pin');
+
+function setPin(lat, lng) {
+  latInput.value = lat.toFixed(6);
+  lngInput.value = lng.toFixed(6);
+  pinStatus.textContent = `Pinned at ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  clearBtn.style.display = '';
+  if (pinMarker) {
+    pinMarker.setLatLng([lat, lng]);
+  } else {
+    pinMarker = L.marker([lat, lng]).addTo(pinMap);
+  }
+}
+
+pinMap.on('click', (e) => setPin(e.latlng.lat, e.latlng.lng));
+
+clearBtn.addEventListener('click', () => {
+  latInput.value = '';
+  lngInput.value = '';
+  pinStatus.textContent = 'No pin set.';
+  clearBtn.style.display = 'none';
+  if (pinMarker) {
+    pinMap.removeLayer(pinMarker);
+    pinMarker = null;
   }
 });
 </script>

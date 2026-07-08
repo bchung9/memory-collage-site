@@ -14,6 +14,9 @@
       <a class="by-link" href="{{ url_for('profile', username=memory.author.username) }}">@{{ memory.author.username }}</a>
       <span class="stamp">{{ memory.memory_date if memory.memory_date else memory.created_at.strftime('%d %b %Y') }}</span>
     </div>
+    {% if not memory.is_public %}
+    <p class="privacy-note">&#128274; Private &mdash; only you can see this</p>
+    {% endif %}
     {% if memory.caption %}<p class="detail-caption">{{ memory.caption }}</p>{% endif %}
     {% if memory.location %}<p class="detail-location">&#128205; {{ memory.location }}</p>{% endif %}
 
@@ -24,10 +27,17 @@
     </button>
 
     {% if memory.user_id == current_user.id %}
-    <form method="post" action="{{ url_for('delete_memory', memory_id=memory.id) }}"
-          onsubmit="return confirm('Delete this memory? This can\'t be undone.');">
-      <button type="submit" class="btn-text-danger">Delete this memory</button>
-    </form>
+    <div class="owner-actions">
+      <form method="post" action="{{ url_for('toggle_visibility', memory_id=memory.id) }}">
+        <button type="submit" class="btn-text-accent">
+          {% if memory.is_public %}Make private{% else %}Make public{% endif %}
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('delete_memory', memory_id=memory.id) }}"
+            onsubmit="return confirm('Delete this memory? This can\'t be undone.');">
+        <button type="submit" class="btn-text-danger">Delete this memory</button>
+      </form>
+    </div>
     {% endif %}
 
     <div class="comments-section">

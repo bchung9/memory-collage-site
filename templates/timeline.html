@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Timeline &middot; Memoria{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <h1>Your timeline</h1>
+  <div class="view-toggle">
+    <button type="button" class="view-toggle-btn active" data-view="list">List</button>
+    <button type="button" class="view-toggle-btn" data-view="map">Map</button>
+  </div>
+</div>
+
+{% if total == 0 %}
+<div class="empty-state">
+  <p>No memories yet.</p>
+  <a class="btn-pill" href="{{ url_for('upload') }}">Keep your first one</a>
+</div>
+{% else %}
+
+<div id="view-list" class="view-panel">
+  {% for group in groups %}
+  <div class="year-block">
+    <div class="year-marker">
+      <span class="year-line"></span>
+      <span class="year-label">{{ group.year }}</span>
+      <span class="year-line"></span>
+    </div>
+    <div class="timeline-track">
+      {% for m in group.memories %}
+      <a class="timeline-item" href="{{ url_for('memory_detail', memory_id=m.id) }}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-thumb">
+          {% if m.media_type == 'video' %}
+            <video muted preload="metadata">
+              <source src="{{ url_for('static', filename='uploads/' ~ m.filename) }}">
+            </video>
+            <span class="badge-video small">&#9654;</span>
+          {% else %}
+            <img src="{{ url_for('static', filename='uploads/' ~ m.filename) }}" alt="{{ m.caption }}" loading="lazy">
+          {% endif %}
+          {% if not m.is_public %}<span class="badge-private small">&#128274;</span>{% endif %}
+        </div>
+        <div class="timeline-text">
+          {% if m.caption %}<p class="timeline-caption">{{ m.caption }}</p>{% endif %}
+          <div class="card-meta">
+            <span class="stamp">{{ m.memory_date if m.memory_date else m.created_at.strftime('%d %b %Y') }}</span>
+            <span class="by">@{{ m.author.username }}</span>
+          </div>
+          {% if m.location %}<span class="timeline-location">&#128205; {{ m.location }}</span>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div id="view-map" class="view-panel" style="display:none;">
+  {% if markers %}
+  <div id="map-canvas"></div>
+  {% else %}
+  <div class="empty-state">
+    <p>No memories have a location pin yet.</p>
+    <p class="muted">Drop a pin next time you add a memory to see it here.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endif %}
+
+<script>
+const markers = {{ markers|tojson }};
+
+const listBtn = document.querySelector('[data-view="list"]');
+const mapBtn = document.querySelector('[data-view="map"]');
+const listPanel = document.getElementById('view-list');
+const mapPanel = document.getElementById('view-map');
+let mapInitialized = false;
+let leafletMap = null;
+
+function showView(view) {
+  const isList = view === 'list';
+  listPanel.style.display = isList ? '' : 'none';
+  mapPanel.style.display = isList ? 'none' : '';
+  listBtn.classList.toggle('active', isList);
+  mapBtn.classList.toggle('active', !isList);
+  if (!isList && !mapInitialized) {
+    initMap();
+  } else if (!isList && leafletMap) {
+    setTimeout(() => leafletMap.invalidateSize(), 50);
+  }
+}
+
+function initMap() {
+  const canvas = document.getElementById('map-canvas');
+  if (!canvas || markers.length === 0) return;
+  mapInitialized = true;
+
+  leafletMap = L.map('map-canvas');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  const bounds = [];
+  markers.forEach(m => {
+    bounds.push([m.lat, m.lng]);
+    const marker = L.marker([m.lat, m.lng]).addTo(leafletMap);
+    const mediaHtml = m.is_video
+      ? `<video src="${m.thumb}" style="width:160px;height:110px;object-fit:cover;border-radius:3px;" muted></video>`
+      : `<img src="${m.thumb}" style="width:160px;height:110px;object-fit:cover;border-radius:3px;">`;
+    marker.bindPopup(
+      `<a href="${m.url}" style="text-decoration:none;color:inherit;">
+        ${mediaHtml}
+        <div style="margin-top:6px;font-family:sans-serif;font-size:0.85rem;max-width:160px;">
+          <strong>@${m.username}</strong><br>${m.date}
+        </div>
+      </a>`
+    );
+  });
+
+  if (bounds.length === 1) {
+    leafletMap.setView(bounds[0], 12);
+  } else if (bounds.length > 1) {
+    leafletMap.fitBounds(bounds, { padding: [30, 30] });
+  } else {
+    leafletMap.setView([20, 0], 2);
+  }
+}
+
+if (listBtn && mapBtn) {
+  listBtn.addEventListener('click', () => showView('list'));
+  mapBtn.addEventListener('click', () => showView('map'));
+}
+</script>
+{% endblock %}

@@ -57,7 +57,9 @@ class Memory(db.Model):
     caption = db.Column(db.Text, default="")
     location = db.Column(db.String(120), default="")
     memory_date = db.Column(db.String(20), default="")  # free-text date the memory happened
-    is_public = db.Column(db.Boolean, default=True, nullable=False)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    is_public = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     likes = db.relationship("Like", backref="memory", lazy=True, cascade="all, delete-orphan")
@@ -214,7 +216,15 @@ def upload():
         caption = request.form.get("caption", "").strip()
         location = request.form.get("location", "").strip()
         memory_date = request.form.get("memory_date", "").strip()
-        is_public = request.form.get("visibility", "public") == "public"
+        is_public = request.form.get("visibility", "private") == "public"
+
+        lat_raw = request.form.get("latitude", "").strip()
+        lng_raw = request.form.get("longitude", "").strip()
+        try:
+            latitude = float(lat_raw) if lat_raw else None
+            longitude = float(lng_raw) if lng_raw else None
+        except ValueError:
+            latitude = longitude = None
 
         if not file or file.filename == "":
             flash("Please choose a photo or video.", "error")
@@ -236,6 +246,8 @@ def upload():
             location=location,
             memory_date=memory_date,
             is_public=is_public,
+            latitude=latitude,
+            longitude=longitude,
         )
         db.session.add(memory)
         db.session.commit()
@@ -322,6 +334,44 @@ def delete_comment(comment_id):
     db.session.delete(comment)
     db.session.commit()
     return redirect(url_for("memory_detail", memory_id=memory_id))
+
+
+@app.route("/timeline")
+@login_required
+def timeline():
+    user = current_user()
+    memories = (
+        Memory.query.filter(db.or_(Memory.is_public == True, Memory.user_id == user.id))
+        .order_by(Memory.created_at.desc())
+        .all()
+    )
+
+    groups = []
+    current_year = None
+    for m in memories:
+        year = m.created_at.year
+        if year != current_year:
+            groups.append({"year": year, "memories": []})
+            current_year = year
+        groups[-1]["memories"].append(m)
+
+    pinned = [m for m in memories if m.latitude is not None and m.longitude is not None]
+    markers = [
+        {
+            "id": m.id,
+            "lat": m.latitude,
+            "lng": m.longitude,
+            "caption": m.caption or "(no caption)",
+            "username": m.author.username,
+            "url": url_for("memory_detail", memory_id=m.id),
+            "thumb": url_for("static", filename="uploads/" + m.filename),
+            "is_video": m.media_type == "video",
+            "date": m.memory_date or m.created_at.strftime("%d %b %Y"),
+        }
+        for m in pinned
+    ]
+
+    return render_template("timeline.html", groups=groups, markers=markers, total=len(memories))
 
 
 @app.route("/u/<username>")

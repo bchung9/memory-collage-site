@@ -23,6 +23,7 @@
       {% else %}
         <img src="{{ url_for('static', filename='uploads/' ~ m.filename) }}" alt="{{ m.caption }}" loading="lazy">
       {% endif %}
+      {% if not m.is_public %}<span class="badge-private">&#128274; Private</span>{% endif %}
     </div>
     <div class="card-strip">
       {% if m.caption %}<p class="card-caption">{{ m.caption }}</p>{% endif %}
